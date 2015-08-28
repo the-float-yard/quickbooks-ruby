@@ -10,8 +10,10 @@ module Quickbooks
         page = 0
         per_page = options.delete(:per_page) || 1_000
         begin
+          puts "query in batches. Page: #{page}, Per Page: #{per_page}"
           page += 1
           results = query(object_query, page: page, per_page: per_page)
+          puts "got #{results.count} results"
           yield results if results.count > 0
         end until results.count < per_page
       end
