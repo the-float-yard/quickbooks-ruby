@@ -12,7 +12,6 @@ describe "Quickbooks::Service::CompanyCurrency" do
     company_currency_query.entries.count.should == 1
 
     company_currency = company_currency_query.entries.first
-    puts company_currency
     company_currency.name.should == 'Euro'
   end
 
