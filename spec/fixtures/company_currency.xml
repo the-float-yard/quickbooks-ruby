@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<CompanyCurrency domain="QBO" sparse="false">
+  <Id>2</Id>
+  <SyncToken>0</SyncToken>
+  <MetaData>
+    <CreateTime>2015-06-05T13:59:42-07:00</CreateTime>
+    <LastUpdatedTime>2015-06-05T13:59:42-07:00</LastUpdatedTime>
+  </MetaData>
+  <Code>EUR</Code>
+  <Name>Euro</Name>
+  <Active>true</Active>
+</CompanyCurrency>

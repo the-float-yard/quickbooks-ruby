@@ -33,7 +33,7 @@ Moreover, there is no longer a getter method e.g. `active` (without the trailing
 
 ## Requirements
 
-This has been tested on 1.9.3, 2.0.0, and 2.1.0.
+This has been tested on 1.9.3, 2.0, 2.1, 2.2
 
 Ruby 1.8.7 and 1.9.2 are not supported.
 
@@ -302,9 +302,7 @@ I say *pseudo* because they look like Integers but Intuit has made it clear they
 Anyways, its subtle but the value for a `SalesReceipt#ShipMethodRef` while it is a `BaseReference` needs to be set manually:
 
 ```ruby
-shipping_reference = Quickbooks::Model::BaseReference.new
-shipping_reference.name = 'FedEx'
-shipping_reference.value = 'FedEx'
+shipping_reference = Quickbooks::Model::BaseReference.new('FedEx', name: 'FedEx')
 receipt.ship_method_ref = shipping_reference
 ```
 
@@ -500,9 +498,7 @@ meta = Quickbooks::Model::Attachable.new
 meta.file_name = "monkey.jpg"
 meta.note = "A note"
 meta.content_type = "image/jpeg"
-entity = Quickbooks::Model::BaseReference.new
-entity.type = 'Customer'
-entity.value = 3 # Id of the Customer
+entity = Quickbooks::Model::BaseReference.new(3, type: 'Customer')
 meta.attachable_ref = Quickbooks::Model::AttachableRef.new(entity)
 ```
 
@@ -529,7 +525,21 @@ puts attach.temp_download_uri
 => "https://intuit-qbo-prod-29.s3.amazonaws.com/12345%2Fattachments%2Fmonkey-1423760870606.jpg?Expires=1423761772&AWSAcc ... snip ..."
 ```
 
+### Download PDF of an Invoice or SalesReceipt
 
+To download a PDF of an Invoice:
+
+```ruby
+service = Quickbooks::Service::Invoice.new # or use the SalesReceipt service
+
+# +invoice+ is an instance of Quickbooks::Model::Invoice
+raw_pdf_data = service.pdf(invoice)
+
+# write it to disk
+File.open("invoice.pdf", "wb") do |file|
+  file.write(raw_pdf_data)
+end
+```
 
 ## Change Data Capture
 
@@ -545,9 +555,9 @@ changed = service.since(Time.now.utc - 5 days)
 
 see: https://developer.intuit.com/docs/0100_accounting/0300_developer_guides/change_data_capture for more information.
 
-## Change Data Capture For Customers, Vendors and Items
+## Change Data Capture For Customers, Vendors, Items, Payments and Credit Memos
 
-It is possible to find out which Customer, Vendor or Item Entries has recently changed.
+It is possible to find out which Customer, Vendor, Item, Payment or Credit Memo Entries have recently changed.
 It is possible to request changes up to 30 days ago.
 
 ```ruby
@@ -571,6 +581,20 @@ item_changed = item_service.since(Time.now.utc - 5 days)
 
 
 see: https://developer.intuit.com/docs/0100_accounting/0300_developer_guides/change_data_capture for more information.
+
+## Reports API
+
+Quickbooks has an API called the [Reports API](https://developer.intuit.com/docs/0100_accounting/0400_references/reports) that provides abilities such as: business and sales overview; vendor and customer balances; review expenses and purchases and more.
+See the [specs](https://github.com/ruckus/quickbooks-ruby/blob/master/spec/lib/quickbooks/model/report_spec.rb) for [examples](https://github.com/ruckus/quickbooks-ruby/blob/master/spec/lib/quickbooks/service/reports_spec.rb) of how to leverage.
+
+## JSON support
+
+Intuit started the v3 API supporting both XML and JSON. However, new
+v3 API services such as `Tax Service` [will only support
+JSON]( https://github.com/ruckus/quickbooks-ruby/issues/257#issuecomment-126834454 ). This gem has
+[ roots ](https://github.com/ruckus/quickeebooks) in the v2 API, which was XML only, and hence was constructed supporting XML only. 
+
+That said, the `Tax Service` is supported and other new v3-API-JSON-only services will be supported. Ideally, we would like to fully support JSON for all entities and services for the `1.0.0` release. Please jump in and contribute to help that aim.
 
 ## Logging
 
@@ -615,22 +639,28 @@ Sales Receipt     | yes    | yes    | yes   | yes    | yes         |
 Sales Rep         | no     | no     | no    | no     | no          |
 Sales Tax         | no     | no     | no    | no     | no          |
 Sales Term        | no     | no     | no    | no     | no          |
+Tax Agency        | yes    | yes    | yes   | yes    | yes         |
 Tax Code          | no     | no     | yes   | no     | no          |
-Tax Rate          | no     | no     | yes   | no     | no          |
+Tax Rate          | yes    | yes    | yes   | no     | no          |
+*Tax Service      | yes    | yes    | no    | no     | no          |
 Term              | yes    | yes    | yes   | yes    | yes         |
 Time Activity     | yes    | yes    | yes   | yes    | yes         |
 Tracking Class    | no     | no     | no    | no     | no          |
 Vendor            | yes    | yes    | yes   | yes    | yes         |
 Vendor Credit     | yes    | yes    | yes   | yes    | yes         |
 
+*JSON only
 
 ## Related GEMS
 
 [`quickbooks-ruby-base`](https://github.com/minimul/quickbooks-ruby-base): Complements quickbooks-ruby by providing a [base class](http://minimul.com/improve-your-quickbooks-ruby-integration-experience-with-the-quickbooks-ruby-base-gem.html) to handle routine tasks like creating a model, service, and displaying information.
 
+[`qbo_rails`](https://github.com/minimul/qbo_rails): Simple Rails error handling and QuickBooks Online "Id" persistence. Uses `quickbooks-ruby`.
+
 ## TODO
 
 * Implement other Line Item types, e.g. `DescriptionLineDetail` for Invoices
+* Full JSON support
 
 ## Author
 

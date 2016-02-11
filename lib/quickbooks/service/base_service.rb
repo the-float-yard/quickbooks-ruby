@@ -45,6 +45,14 @@ module Quickbooks
         "#{@base_uri}/#{@company_id}"
       end
 
+      def is_json?
+        self.class::HTTP_CONTENT_TYPE == "application/json"
+      end
+
+      def is_pdf?
+        self.class::HTTP_CONTENT_TYPE == "application/pdf"
+      end
+
       def default_model_query
         "SELECT * FROM #{self.class.name.split("::").last}"
       end
@@ -121,13 +129,9 @@ module Quickbooks
             collection.count = xml.xpath(path_to_nodes).count
             if collection.count > 0
               xml.xpath(path_to_nodes).each do |xa|
-                entry = model.from_xml(xa)
-                addition = xml.xpath(path_to_nodes)[0].xpath("//xmlns:Currency").children.to_s if "#{model::XML_NODE}" == "Reports"
-                entry.currency = addition if "#{model::XML_NODE}" == "Reports"
-                collection.body = response.body if "#{model::XML_NODE}" == "Reports"
-                results << entry
+                results << model.from_xml(xa)
               end
-            end              
+            end
 
             collection.entries = results
           rescue => ex
@@ -174,6 +178,20 @@ module Quickbooks
         do_http(:get, url, {}, headers)
       end
 
+      def do_http_raw_get(url, params = {}, headers = {})
+        url = add_query_string_to_url(url, params)
+        unless headers.has_key?('Content-Type')
+          headers['Content-Type'] = self.class::HTTP_CONTENT_TYPE
+        end
+        unless headers.has_key?('Accept')
+          headers['Accept'] = self.class::HTTP_ACCEPT
+        end
+        unless headers.has_key?('Accept-Encoding')
+          headers['Accept-Encoding'] = HTTP_ACCEPT_ENCODING
+        end
+        @oauth.get(url, headers)
+      end
+
       def do_http_file_upload(uploadIO, url, metadata = nil)
         headers = {
           'Content-Type' => 'multipart/form-data'
@@ -196,10 +214,10 @@ module Quickbooks
           raise "OAuth client has not been initialized. Initialize with setter access_token="
         end
         unless headers.has_key?('Content-Type')
-          headers['Content-Type'] = HTTP_CONTENT_TYPE
+          headers['Content-Type'] = self.class::HTTP_CONTENT_TYPE
         end
         unless headers.has_key?('Accept')
-          headers['Accept'] = HTTP_ACCEPT
+          headers['Accept'] = self.class::HTTP_ACCEPT
         end
         unless headers.has_key?('Accept-Encoding')
           headers['Accept-Encoding'] = HTTP_ACCEPT_ENCODING
@@ -208,8 +226,7 @@ module Quickbooks
         log "------ QUICKBOOKS-RUBY REQUEST ------"
         log "METHOD = #{method}"
         log "RESOURCE = #{url}"
-        log "REQUEST BODY:"
-        log(log_xml(body))
+        log_request_body(body)
         log "REQUEST HEADERS = #{headers.inspect}"
 
         response = case method
@@ -222,7 +239,7 @@ module Quickbooks
           else
             raise "Do not know how to perform that HTTP operation"
           end
-        check_response(response, :request_xml => body)
+        check_response(response, :request => body)
       end
 
       def add_query_string_to_url(url, params)
@@ -236,9 +253,7 @@ module Quickbooks
       def check_response(response, options = {})
         log "------ QUICKBOOKS-RUBY RESPONSE ------"
         log "RESPONSE CODE = #{response.code}"
-        log "RESPONSE BODY:"
-        log(log_xml(response.plain_body))
-        parse_xml(response.plain_body)
+        log_response_body(response)
         status = response.code.to_i
         case status
         when 200
@@ -263,13 +278,37 @@ module Quickbooks
         end
       end
 
+      def log_response_body(response)
+        log "RESPONSE BODY:"
+        if is_json?
+          log ">>>>#{response.plain_body.inspect}"
+          parse_json(response.plain_body)
+        else
+          log(log_xml(response.plain_body))
+          parse_xml(response.plain_body)
+        end
+      end
+
+      def log_request_body(body)
+        log "REQUEST BODY:"
+        if is_json?
+          log(body.inspect)
+        else
+          log(log_xml(body))
+        end
+      end
+
       def parse_and_raise_exception(options = {})
         err = parse_intuit_error
         ex = Quickbooks::IntuitRequestException.new("#{err[:message]}:\n\t#{err[:detail]}")
         ex.code = err[:code]
         ex.detail = err[:detail]
         ex.type = err[:type]
-        ex.request_xml = options[:request_xml]
+        if is_json?
+          ex.request_json = options[:request]
+        else
+          ex.request_xml = options[:request]
+        end
         raise ex
       end
 
