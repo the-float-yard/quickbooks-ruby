@@ -1,4 +1,4 @@
-describe "Quickbooks::Model::SalesReceipt" do
+describe "Quickbooks::Model::Transfer" do
   it "parse from XML" do
     xml = fixture("transfer.xml")
     transfer = Quickbooks::Model::Transfer.from_xml(xml)
