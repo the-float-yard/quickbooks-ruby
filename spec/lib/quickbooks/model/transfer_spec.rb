@@ -16,6 +16,6 @@ describe "Quickbooks::Model::Transfer" do
     transfer.from_account.value.should == "36"
     transfer.to_account.name.should == "Checking"
     transfer.to_account.value.should == "35"
-    transfer.amount.should == "250.00"
+    transfer.amount.should == 250.00
   end
 end

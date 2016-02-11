@@ -13,7 +13,7 @@ module Quickbooks
       xml_accessor :private_note, :from => 'PrivateNote'
       xml_accessor :from_account, :from => 'FromAccountRef', :as => BaseReference
       xml_accessor :to_account, :from => 'ToAccountRef', :as => BaseReference
-      xml_accessor :amount, :from => 'Amount'
+      xml_accessor :amount, :from => 'Amount', :as => BigDecimal, :to_xml => to_xml_big_decimal
     end
   end
 end

@@ -12,7 +12,7 @@ describe "Quickbooks::Service::Transfer" do
     transfers_query.entries.count.should == 1
 
     transfer = transfers_query.entries.first
-    transfer.amount.should == "250.00"
+    transfer.amount.should == 250.00
   end
 
 end
