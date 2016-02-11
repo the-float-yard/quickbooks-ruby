@@ -37,7 +37,6 @@ module Quickbooks
       end
 
       def url_for_resource(resource)
-        puts "Hitting #{url_for_base}/#{resource}"
         "#{url_for_base}/#{resource}"
       end
 
