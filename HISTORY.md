@@ -1,3 +1,26 @@
+## 0.4.3 (2016-02-13)
+
+* Remove dependency on alias_method_chain from create_http_request method.
+* Support for the Transfer endpoint - thanks @Craggar
+* Added ability to download a Estimate PDF - thanks @rickbarrette
+
+## 0.4.2 (2015-11-11)
+
+* Fixed bug in Item#fetch_by_id where the minorversion param injection was generating an incorrect URL. Thanks to @jordangraft for the PR.
+
+* Added helpers to ServiceCrud: all and find_by. Thanks to @vanboom for the PR.
+
+* Added void method for service/payment. Thanks to @jordangraft for the PR.
+
+## 0.4.1 (2015-10-28)
+
+* Item service defaults to minorversion=4 for I/O operations
+
+## 0.4.0 (2015-09-01)
+
+* Reports API enhancements
+* Tax Service with initial support for JSON. Tax Agency support and Tax Rate and update abilities.
+
 ## 0.3.0 (2015-08-12)
 
 * Tax Service with initial support for JSON. Tax Agency support and Tax Rate creation and update abilities.

@@ -14,5 +14,4 @@ describe "Quickbooks::Service::Transfer" do
     transfer = transfers_query.entries.first
     transfer.amount.should == 250.00
   end
-
 end

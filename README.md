@@ -64,10 +64,10 @@ What follows is an example using Rails but the principles can be adapted to any 
 Create a Rails initializer with:
 
 ```ruby
-QB_KEY = "your apps Intuit App Key"
-QB_SECRET = "your apps Intuit Secret Key"
+OAUTH_CONSUMER_KEY = "OAUTH_CONSUMER_KEY"
+OAUTH_CONSUMER_SECRET = "OAUTH_CONSUMER_SECRET"
 
-$qb_oauth_consumer = OAuth::Consumer.new(QB_KEY, QB_SECRET, {
+::QB_OAUTH_CONSUMER = OAuth::Consumer.new(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, {
     :site                 => "https://oauth.intuit.com",
     :request_token_path   => "/oauth/v1/get_request_token",
     :authorize_url        => "https://appcenter.intuit.com/Connect/Begin",
@@ -96,7 +96,7 @@ Your Controller action (the `grantUrl` above) should look like this:
 ```ruby
   def authenticate
     callback = quickbooks_oauth_callback_url
-    token = $qb_oauth_consumer.get_request_token(:oauth_callback => callback)
+    token = QB_OAUTH_CONSUMER.get_request_token(:oauth_callback => callback)
     session[:qb_request_token] = token
     redirect_to("https://appcenter.intuit.com/Connect/Begin?oauth_token=#{token.token}") and return
   end
@@ -127,10 +127,10 @@ Marshal.load(session[:qb_request_token]).get_access_token(:oauth_verifier => par
 
 ## Creating an OAuth Access Token
 
-Once you have your users OAuth Token & Secret you can initialize your `OAuth Consumer` and create a `OAuth Client` using the `$qb_oauth_consumer` you created earlier in your Rails initializer:
+Once you have your users OAuth Token & Secret you can initialize your `OAuth Consumer` and create a `OAuth Client` using the `QB_OAUTH_CONSUMER` you created earlier in your Rails initializer:
 
 ```ruby
-access_token = OAuth::AccessToken.new($qb_oauth_consumer, access_token, access_secret)
+access_token = OAuth::AccessToken.new(QB_OAUTH_CONSUMER, string_access_token_from_qb, string_access_secret_from_qb)
 ```
 
 ## Persisting the Credentials
@@ -157,7 +157,7 @@ Then you will want to have a scheduled task / cron which runs nightly and runs t
 
 ```ruby
 expiring_tokens.each do |record|
-  access_token = OAuth::AccessToken.new($qb_oauth_consumer, record.access_token, record.access_secret)
+  access_token = OAuth::AccessToken.new(QB_OAUTH_CONSUMER, record.access_token, record.access_secret)
   service = Quickbooks::Service::AccessToken.new
   service.access_token = access_token
   service.company_id = record.company_id
@@ -237,6 +237,14 @@ If you're are running a custom Query then pass it instead.
 The second argument is the options, which are optional.
 By default, the options are `per_page: 1000`.
 
+## Retrieving all objects
+
+You may retrieve an array of objects like so:
+```ruby
+customers = service.all
+```
+Unlike other query functions which return a Quickbooks::Collection object,
+the all method returns an array of objects.
 
 ## Retrieving a single object
 
@@ -246,6 +254,16 @@ You can retrieve a specific Intuit object like so:
 customer = service.fetch_by_id("99")
 puts customer.company_name
 => "Acme Enterprises"
+```
+## Retrieving objects with matching attributes
+
+The `find_by(attribute, value)` method allows you to retrieve objects with a simple WHERE query using a single attribute.  The attribute may be given as a symbol or a string.
+Symbols will be automatically camelcased to match the Quickbooks API field names.
+
+```ruby
+customer = service.find_by(:family_name, "Doe")
+or
+customer = service.find_by("FamilyName", "Doe")
 ```
 
 ## Updating an object
@@ -374,7 +392,7 @@ salesreceipt = Quickbooks::Model::SalesReceipt.new({
   customer_id: 99,
   txn_date: Date.civil(2013, 11, 20),
   payment_ref_number: "111", #optional payment reference number/string - e.g. stripe token
-  deposit_to_account_id: 222, #The ID of the Account entity you want the SalesReciept to be deposited to
+  deposit_to_account_id: 222, #The ID of the Account entity you want the SalesReceipt to be deposited to
   payment_method_id: 333 #The ID of the PaymentMethod entity you want to be used for this transaction
 })
 salesreceipt.auto_doc_number! #allows Intuit to auto-generate the transaction number
@@ -508,7 +526,7 @@ meta.attachable_ref = Quickbooks::Model::AttachableRef.new(entity)
 ### Uploading an actual file
 
 ```ruby
-upload_service = Quickbooks::Model::Upload.new
+upload_service = Quickbooks::Service::Upload.new
 
 # args:
 #     local-path to file
@@ -592,7 +610,7 @@ See the [specs](https://github.com/ruckus/quickbooks-ruby/blob/master/spec/lib/q
 Intuit started the v3 API supporting both XML and JSON. However, new
 v3 API services such as `Tax Service` [will only support
 JSON]( https://github.com/ruckus/quickbooks-ruby/issues/257#issuecomment-126834454 ). This gem has
-[ roots ](https://github.com/ruckus/quickeebooks) in the v2 API, which was XML only, and hence was constructed supporting XML only. 
+[ roots ](https://github.com/ruckus/quickeebooks) in the v2 API, which was XML only, and hence was constructed supporting XML only.
 
 That said, the `Tax Service` is supported and other new v3-API-JSON-only services will be supported. Ideally, we would like to fully support JSON for all entities and services for the `1.0.0` release. Please jump in and contribute to help that aim.
 
