@@ -10,17 +10,20 @@ module Quickbooks
       XML_COLLECTION_NODE = "Item"
       XML_NODE = "Item"
       REST_RESOURCE = 'item'
+      MINORVERSION = 4
 
       INVENTORY_TYPE = 'Inventory'
-      NON_INVENTORY_TYPE = 'Non Inventory'
+      NON_INVENTORY_TYPE = 'NonInventory'
       SERVICE_TYPE = 'Service'
-      ITEM_TYPES = [INVENTORY_TYPE, NON_INVENTORY_TYPE, SERVICE_TYPE]
+      CATEGORY_TYPE = 'Category'
+      ITEM_TYPES = [INVENTORY_TYPE, NON_INVENTORY_TYPE, SERVICE_TYPE, CATEGORY_TYPE]
 
       xml_name 'Item'
       xml_accessor :id, :from => 'Id'
       xml_accessor :sync_token, :from => 'SyncToken', :as => Integer
       xml_accessor :meta_data, :from => 'MetaData', :as => MetaData
       xml_accessor :name, :from => 'Name'
+      xml_accessor :sku, :from => 'Sku'
       xml_accessor :description, :from => 'Description'
       xml_accessor :active?, :from => 'Active'
       xml_accessor :sub_item?, :from => 'SubItem'
@@ -45,6 +48,10 @@ module Quickbooks
       xml_accessor :sales_tax_code_ref, :from => 'SalesTaxCodeRef', :as => BaseReference
       xml_accessor :purchase_tax_code_ref, :from => 'PurchaseTaxCodeRef', :as => BaseReference
       xml_accessor :inv_start_date, :from => 'InvStartDate', :as => Date
+
+      xml_accessor :print_grouped_items?, :from => 'PrintGroupedItems'
+
+      xml_accessor :item_group_details, :from => 'ItemGroupDetail', :as => ItemGroupDetail
 
       reference_setters :parent_ref, :income_account_ref, :expense_account_ref
       reference_setters :asset_account_ref, :sales_tax_code_ref, :purchase_tax_code_ref
@@ -75,7 +82,6 @@ module Quickbooks
         end
         errors.empty?
       end
-
     end
   end
 end

@@ -57,7 +57,7 @@ module Quickbooks
         "SELECT * FROM #{self.class.name.split("::").last}"
       end
 
-      def url_for_query(query = nil, start_position = 1, max_results = 20)
+      def url_for_query(query = nil, start_position = 1, max_results = 20, options = {})
         query ||= default_model_query
         query = "#{query} STARTPOSITION #{start_position} MAXRESULTS #{max_results}"
 
@@ -239,12 +239,19 @@ module Quickbooks
           else
             raise "Do not know how to perform that HTTP operation"
           end
-        check_response(response, :request => body)
+
+        if response.code.to_i == 302 && [:get, :post].include?(method)
+          do_http(method, response['location'], body, headers)
+        else
+          check_response(response, :request => body)
+        end
       end
 
       def add_query_string_to_url(url, params)
         if params.is_a?(Hash) && !params.empty?
-          url + "?" + params.collect { |k| "#{k.first}=#{k.last}" }.join("&")
+          keyvalues = params.collect { |k| "#{k.first}=#{k.last}" }.join("&")
+          delim = url.index("?") != nil ? "&" : "?"
+          url + delim + keyvalues
         else
           url
         end
@@ -268,10 +275,21 @@ module Quickbooks
         when 401
           raise Quickbooks::AuthorizationFailure
         when 403
-          raise Quickbooks::Forbidden
+          message = parse_intuit_error[:message]
+          if message.include?('ThrottleExceeded')
+            raise Quickbooks::ThrottleExceeded, message
+          end
+          raise Quickbooks::Forbidden, message
+        when 404
+          raise Quickbooks::NotFound
+        when 413
+          raise Quickbooks::RequestTooLarge
         when 400, 500
           parse_and_raise_exception(options)
-        when 503, 504
+        when 429
+          message = parse_intuit_error[:message]
+          raise Quickbooks::TooManyRequests, message
+        when 502, 503, 504
           raise Quickbooks::ServiceUnavailable
         else
           raise "HTTP Error Code: #{status}, Msg: #{response.plain_body}"

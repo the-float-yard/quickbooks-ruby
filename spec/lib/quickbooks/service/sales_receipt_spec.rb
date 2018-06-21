@@ -67,6 +67,60 @@ module Quickbooks
         receipt = subject.fetch_by_id(1)
         expect(receipt.doc_number).to eq "1001"
       end
+
+      it "can void a Sales Receipt" do
+        model = Quickbooks::Model::SalesReceipt
+        receipt = Quickbooks::Model::SalesReceipt.new
+        receipt.doc_number = "1001"
+        receipt.sync_token = 2
+        receipt.id = 1
+        receipt.customer_id = 3
+        line_item = Quickbooks::Model::Line.new
+        line_item.amount = 50
+        line_item.description = "Plush Baby Doll"
+        line_item.sales_item! do |detail|
+          detail.unit_price = 50
+          detail.quantity = 1
+          detail.item_id = 1
+          detail.tax_code_id = 'NON'
+        end
+        receipt.line_items << line_item
+
+        xml = fixture("sales_receipt_void_success_response.xml")
+        stub_request(:post, "#{subject.url_for_resource(model::REST_RESOURCE)}?include=void", ["200", "OK"], xml)
+
+        response = subject.void(receipt)
+        response.private_note.should == 'Voided'
+      end
+
+      it "can send a sales receipt using bill_email" do
+        xml = fixture("sales_receipt_send.xml")
+        model = Quickbooks::Model::SalesReceipt
+        stub_request(:post, "#{subject.url_for_resource(model::REST_RESOURCE)}/1/send", ["200", "OK"], xml)
+
+        sales_receipt = Quickbooks::Model::SalesReceipt.new
+        sales_receipt.doc_number = "1001"
+        sales_receipt.sync_token = 2
+        sales_receipt.id = 1
+        sent_sales_receipt = subject.send(sales_receipt)
+        sent_sales_receipt.email_status.should == "EmailSent"
+        sent_sales_receipt.delivery_info.delivery_type.should == "Email"
+        sent_sales_receipt.delivery_info.delivery_time.should eq(Time.new(2015, 2, 24, 18, 26, 03, "-08:00"))
+      end
+
+      it "can send an sales receipt with new email_address" do
+        xml = fixture("sales_receipt_send.xml")
+        model = Quickbooks::Model::SalesReceipt
+        stub_request(:post, "#{subject.url_for_resource(model::REST_RESOURCE)}/1/send?sendTo=test@intuit.com", ["200", "OK"], xml)
+
+        sales_receipt = Quickbooks::Model::SalesReceipt.new
+        sales_receipt.doc_number = "1001"
+        sales_receipt.sync_token = 2
+        sales_receipt.id = 1
+        sent_sales_receipt = subject.send(sales_receipt, "test@intuit.com")
+        sent_sales_receipt.bill_email.address.should == "test@intuit.com"
+      end
+
     end
   end
 end

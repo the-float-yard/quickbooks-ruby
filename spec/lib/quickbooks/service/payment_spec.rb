@@ -47,6 +47,7 @@ describe "Quickbooks::Service::Payment" do
                  @service.url_for_resource(resource),
                  ["200", "OK"],
                  fixture("fetch_payment_by_id.xml"),
+                 {},
                  true)
 
     update_response = @service.update(payment, :sparse => true)
@@ -63,6 +64,18 @@ describe "Quickbooks::Service::Payment" do
     response = @service.delete(payment)
 
     response.should be_true
+  end
+
+  it 'can void a payment' do
+    stub_request(:post,
+                 "#{@service.url_for_resource(resource)}?include=void",
+                 ["200", "OK"],
+                 fixture("payment_void_response_success.xml"))
+
+    response = @service.void(payment)
+
+    response.should be_true    
+    response.total.should == 0
   end
 
   it "properly outputs BigDecimal fields" do

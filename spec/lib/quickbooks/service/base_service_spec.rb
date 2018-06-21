@@ -47,6 +47,111 @@ describe Quickbooks::Service::BaseService do
     end
   end
 
+  describe 'do_http' do
+    let(:base_url) { 'http://example.com/'}
+
+    [:get, :post, :upload].each do |request_method|
+      context 'when no access_token exists' do
+        before do
+          construct_service :base_service, nil
+        end
+
+        it "should raise RunTimeError" do
+          expect { @service.send(:do_http, request_method, base_url, nil, {}) }.to raise_error
+        end
+      end
+    end
+
+    context 'when an access token exists' do
+      [:get, :post].each do |request_method|
+        context "when the method is #{request_method}" do
+          before do
+            construct_service :base_service
+            @service.stub(:do_http).and_call_original
+          end
+
+          context 'when a non-302 response is received' do
+            before do
+              stub_request(request_method, base_url, ["200", "OK"], fixture("items.xml"))
+            end
+
+            it "calls do_http only once" do
+              @service.send(:do_http, request_method, base_url, nil, {})
+              @service.should have_received(:do_http).once
+            end
+          end
+
+          context 'when a 302 response is received' do
+            let(:headers) do
+              {
+                "Content-Type" => "application/xml",
+                "Accept" => "application/xml",
+                "Accept-Encoding" => "gzip, deflate"
+              }
+            end
+            let(:redirect_location) { "#{base_url}elsewhere" }
+
+            before do
+              stub_request(request_method, base_url, ["302", "Found"], fixture("items.xml"), :location => redirect_location)
+              stub_request(request_method, redirect_location, ["200", "OK"], fixture("items.xml"))
+            end
+
+            it "calls do_http twice" do
+              @service.send(:do_http, request_method, base_url, nil, headers)
+              @service.should have_received(:do_http).with(request_method, base_url, nil, headers).once
+              @service.should have_received(:do_http).with(request_method, redirect_location, nil, headers).once
+            end
+          end
+        end
+      end
+
+      context 'when the method is upload' do
+        before do
+          construct_service :base_service
+          @service.stub(:do_http).and_call_original
+        end
+
+        context 'when a non-302 response is received' do
+          before do
+            stub_request(:post, base_url, ["200", "OK"], fixture("items.xml"))
+          end
+
+          it "calls do_http only once" do
+            @service.send(:do_http, :upload, base_url, nil, {})
+            @service.should have_received(:do_http).once
+          end
+        end
+
+        context 'when a 302 response is received' do
+          let(:headers) do
+            {
+              "Content-Type" => "application/xml",
+              "Accept" => "application/xml",
+              "Accept-Encoding" => "gzip, deflate"
+            }
+          end
+          let(:redirect_location) { "#{base_url}elsewhere" }
+
+          before do
+            stub_request(:post, base_url, ["302", "Found"], fixture("items.xml"), :location => redirect_location)
+          end
+
+          it "calls do_http only once" do
+            begin
+              @service.send(:do_http, :upload, base_url, nil, {})
+            rescue
+              @service.should have_received(:do_http).once
+            end
+          end
+
+          it 'raises an error' do
+            expect { @service.send(:do_http, :upload, base_url, nil, headers) }.to raise_error(RuntimeError)
+          end
+        end
+      end
+    end
+  end
+
   describe 'check_response' do
     before do
       construct_service :base_service
@@ -83,8 +188,67 @@ describe Quickbooks::Service::BaseService do
       expect { @service.send(:check_response, response) }.to raise_error(Quickbooks::Forbidden)
     end
 
-    it "should raise ServiceUnavailable on HTTP 503 and 504" do
+    it "should raise ThrottleExceeded on HTTP 403 with appropriate message" do
+      xml = fixture('throttle_exceeded_error.xml')
+
+      response = Struct.new(:code, :plain_body).new(403, xml)
+      expect { @service.send(:check_response, response) }.to raise_error(Quickbooks::ThrottleExceeded)
+    end
+
+    it "should raise NotFound on HTTP 404" do
+      html = <<-HTML
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html>
+  <head>
+    <title>404 Not Found</title>
+  </head>
+  <body>
+    <h1>Not Found</h1>
+    <p>The requested URL /v3/company/1413511890/query was not found on this server.</p>
+  </body>
+</html>
+      HTML
+
+      response = Struct.new(:code, :plain_body).new(404, html)
+      expect { @service.send(:check_response, response) }.to raise_error(Quickbooks::NotFound)
+    end
+
+    it "should raise NotFound on HTTP 404" do
+      html = <<-HTML
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html>
+  <head>
+    <title>413 Request Entity Too Large</title>
+  </head>
+  <body>
+    <h1>Request Entity Too Large</h1>
+    The requested resource<br />
+    /v3/company/123145730715194/batch<br />
+    does not allow request data with POST requests, or the amount of data provided in
+    the request exceeds the capacity limit.
+  </body>
+</html>
+      HTML
+
+      response = Struct.new(:code, :plain_body).new(413, html)
+      expect { @service.send(:check_response, response) }.to raise_error(Quickbooks::RequestTooLarge)
+    end
+
+    it "should raise TooManyRequests on HTTP 429 with appropriate message" do
+      xml = fixture('too_many_requests_error.xml')
+      message = Nokogiri::XML::Document.parse(xml) do |config|
+        config.noblanks
+      end.css('Message').text
+
+      response = Struct.new(:code, :plain_body).new(429, xml)
+      expect { @service.send(:check_response, response) }.to raise_error(Quickbooks::TooManyRequests, message)
+    end
+
+    it "should raise ServiceUnavailable on HTTP 502, 503 and 504" do
       xml = fixture('generic_error.xml')
+
+      response = Struct.new(:code, :plain_body).new(502, xml)
+      expect { @service.send(:check_response, response) }.to raise_error(Quickbooks::ServiceUnavailable)
 
       response = Struct.new(:code, :plain_body).new(503, xml)
       expect { @service.send(:check_response, response) }.to raise_error(Quickbooks::ServiceUnavailable)
