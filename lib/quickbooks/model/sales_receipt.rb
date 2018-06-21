@@ -23,7 +23,7 @@ module Quickbooks
       xml_accessor :delivery_info, :from => 'DeliveryInfo', :as => DeliveryInfo
       xml_accessor :ship_address, :from => 'ShipAddr', :as => PhysicalAddress
       xml_accessor :po_number, :from => 'PONumber'
-      xml_accessor :ship_method_ref, :from => 'ShipMethodRef'
+      xml_accessor :ship_method_ref, :from => 'ShipMethodRef', :as => BaseReference
       xml_accessor :ship_date, :from => 'ShipDate', :as => Time
       xml_accessor :tracking_num, :from => 'TrackingNum'
       xml_accessor :payment_method_ref, :from => 'PaymentMethodRef', :as => BaseReference
